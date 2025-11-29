@@ -65,6 +65,56 @@
             justify-content: center;
             gap: 40px;
         }
+        /* Estilos para a tela de carregamento */
+        
+        #loadingOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(18, 18, 18, 0.9);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        #loadingOverlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .loading-box {
+            text-align: center;
+            padding: 20px;
+            background: #1f1f1f;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .loading-title {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .loading-track {
+            width: 100%;
+            height: 8px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .loading-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #81e785);
+            border-radius: 4px;
+            transition: width 1.8s ease-in-out;
+        }
     </style>
 </head>
 
@@ -80,11 +130,37 @@
         </div>
     </div>
 
+    <!-- Loading overlay (inserir antes do script) -->
+    <div id="loadingOverlay" aria-hidden="true" class="">
+        <div class="loading-box" role="dialog" aria-label="Carregando jogo">
+            <div class="loading-title">Carregando Rawr Rawr...</div>
+            <div class="loading-track" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+                <div class="loading-fill" aria-hidden="true"></div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // substitui a função startGame anterior
         function startGame() {
-            window.location.href = "game.html";
-            // Se quiser abrir em nova aba:
-            // window.open("game.html", "_blank");
+            const overlay = document.getElementById('loadingOverlay');
+            const fill = overlay.querySelector('.loading-fill');
+
+            // evita múltiplos cliques
+            if (overlay.classList.contains('active')) return;
+
+            overlay.classList.add('active');
+            fill.style.width = '0%';
+
+            // forçar reflow antes de animar
+            void fill.offsetWidth;
+
+            // anima para 100% (duração definida em CSS)
+            setTimeout(() => fill.style.width = '100%', 50);
+
+            // redireciona quando a animação terminar (duração CSS + buffer)
+            const redirectAfter = 1800; // ms (ajuste se alterar a duração CSS)
+            setTimeout(() => window.location.href = 'game.html', redirectAfter);
         }
     </script>
 
