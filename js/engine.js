@@ -284,6 +284,18 @@ $(document).ready(function() {
         // pausar animação do player se existir
         components['player'] && components['player'].addClass('paused');
 
+        // parar animações internas dos obstáculos
+        obstacles.forEach(obs => {
+            if (obs && obs.animationInterval) {
+                clearInterval(obs.animationInterval);
+                obs.animationInterval = null;
+            }
+            // garantir que qualquer animação CSS também seja pausada (se houver)
+            if (obs && obs.el) {
+                obs.el.css('animation-play-state', 'paused');
+            }
+        });
+
         // remove qualquer listener antigo e adiciona um novo com namespace
         $(document).off('keydown.restart');
 
