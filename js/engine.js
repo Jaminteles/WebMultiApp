@@ -144,33 +144,63 @@ $(document).ready(function() {
     function spawnBlock() {
         if (!gameRunning) return;
         const x = gameArea.width();
-        // y ajustado para que o spike fique encostado no chão (groundLevel - altura)
-        const obstacleHeight = 15;
-        createObstacle(x, groundLevel - obstacleHeight, '#E53935');
+        const player = components['player'];
+        const playerY = player ? parseInt(player.css('top')) : groundLevel;
+
+        // Cria o obstáculo 30px abaixo da posição do player
+        createObstacle(x, groundLevel + 32, '#E53935');
     }
 
     function createObstacle(x, y, color) {
-        const w = 64,
-            h = 48; // obstáculo visual 64x48
+        // Dimensões de cada frame: aumenta até frame 3, depois diminui
+        const frameDimensions = [
+            { width: 66, height: 15 }, // frame 0
+            { width: 66, height: 27 }, // frame 1
+            { width: 66, height: 39 }, // frame 2
+            { width: 66, height: 51 }, // frame 3 (maior)
+            { width: 66, height: 39 }, // frame 4
+            { width: 66, height: 27 }, // frame 5
+            { width: 66, height: 15 } // frame 6
+        ];
+
         const $block = $('<div/>').addClass('g-entity obstacle-sprite').css({
             left: x + 'px',
-            top: y + 'px',
-            width: w + 'px',
-            height: h + 'px',
-            borderRadius: '0px'
+            top: y + 'px', // USA O PARÂMETRO Y PASSADO
+            width: 66 + 'px',
+            height: 0 + 'px',
+            borderRadius: '0px',
+            backgroundImage: 'url("images/dinosaur/spr_spikes_moving.png")',
+            backgroundSize: '462px 51px'
         });
         gameArea.append($block);
 
-        // reduzir caixa de colisão em 4px horizontal e 4px vertical
-        const collW = Math.max(1, w - 4);
-        const collH = Math.max(1, h - 4);
+        let currentFrame = 0;
+        const animationInterval = setInterval(() => {
+            const { width: w, height: h } = frameDimensions[currentFrame];
+            const backgroundPositionX = -(currentFrame * 66);
+            const adjustedY = y - h; // CALCULA BASEADO NO Y RECEBIDO
+
+            $block.css({
+                backgroundPosition: backgroundPositionX + 'px center',
+                top: adjustedY + 'px',
+                height: h + 'px'
+            });
+
+            currentFrame = (currentFrame + 1) % frameDimensions.length;
+        }, 200);
+
+        const collW = 62;
+        const collH = 15;
 
         obstacles.push({
             el: $block,
             x: x,
             y: y,
             width: collW,
-            height: collH
+            height: collH,
+            frameIndex: 0,
+            frameDimensions: frameDimensions,
+            animationInterval: animationInterval
         });
     }
 
@@ -198,7 +228,6 @@ $(document).ready(function() {
             playerTop = groundLevel;
             velocityY = 0;
             isJumping = false;
-            // reaplicar animação de corrida ao aterrissar
             player.removeClass('paused');
         }
 
@@ -206,10 +235,14 @@ $(document).ready(function() {
         obstacles.forEach(obs => {
             const obsLeft = parseInt(obs.el.css('left'));
             const obsTop = parseInt(obs.el.css('top'));
+
+            // Atualizar dimensões da caixa de colisão baseado na altura visual
+            const obsHeight = parseInt(obs.el.css('height'));
+
             if (
                 playerLeft < obsLeft + obs.width &&
                 playerLeft + pW > obsLeft &&
-                playerTop < obsTop + obs.height &&
+                playerTop < obsTop + obsHeight &&
                 playerTop + pH > obsTop
             ) collided = true;
         });
@@ -223,7 +256,11 @@ $(document).ready(function() {
         obstacles = obstacles.filter(obs => {
             const obsLeft = parseInt(obs.el.css('left'));
             obs.el.css('left', (obsLeft - blockSpeed) + 'px');
-            if (obsLeft < -obs.width) { obs.el.remove(); return false; }
+            if (obsLeft < -obs.width) {
+                clearInterval(obs.animationInterval);
+                obs.el.remove();
+                return false;
+            }
             return true;
         });
 
