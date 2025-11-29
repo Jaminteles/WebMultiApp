@@ -167,13 +167,13 @@ h2 {
 }
 
 .game-icon {
-    width: 90px;
-    height: 90px;
-    margin-bottom: 10px;
-    background-image: url('../images/dinosaur/DinoSprites5.png');
-    background-size: cover;
+    width: 100px;
+    height: 100px;
+    margin-bottom: 12px;
+    background-image: url('../images/index/Menu/DinoIcon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
     background-position: center;
-    filter: brightness(1.2);
 }
 
 .game-title {
