@@ -246,10 +246,9 @@ h2 {
     top: 0;
     height: 100%;
     width: 0%;
-    background-image: url('../image/index/loadingBar/LoadingBar02Fill_640x60.png');
+    background-image: url('../images/index/loadingBar/LoadingBar02Fill_640x60.png');
     background-size: cover;
     background-position: left center;
-    /* ajuste a duração aqui (em conjunto com o redirectAfter no JS) */
     transition: width 1.6s cubic-bezier(.2, .8, .2, 1);
 }
 

@@ -22,7 +22,7 @@ $(document).ready(function() {
     function updateInfo(text) { info.text(text); }
 
     function loadXML() {
-        fetch('game.xml')
+        fetch('../rawr-rawr.xml')
             .then(r => r.text())
             .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
             .then(xml => {
@@ -165,11 +165,11 @@ $(document).ready(function() {
 
         const $block = $('<div/>').addClass('g-entity obstacle-sprite').css({
             left: x + 'px',
-            top: y + 'px', // USA O PARÂMETRO Y PASSADO
+            top: y + 'px',
             width: 66 + 'px',
             height: 0 + 'px',
             borderRadius: '0px',
-            backgroundImage: 'url("images/dinosaur/spr_spikes_moving.png")',
+            backgroundImage: 'url("../images/dinosaur/spr_spikes_moving.png")',
             backgroundSize: '462px 51px'
         });
         gameArea.append($block);
