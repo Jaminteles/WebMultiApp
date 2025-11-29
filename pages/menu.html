@@ -113,10 +113,16 @@
     <h1>Menu de Jogos</h1>
 
     <div class="container-menu">
-        <!-- QUADRADO DO JOGO -->
-        <div class="game-card" onclick="startGame()">
-            <div class="game-icon"></div>
+        <!-- QUADRADO DO JOGO: Rawr Rawr -->
+        <div class="game-card" onclick="startGame('rawr-rawr.html')">
+            <div class="game-icon" style="background-image: url('../images/index/Menu/DinoIcon.png');"></div>
             <div class="game-title">Rawr Rawr</div>
+        </div>
+
+        <!-- QUADRADO DO JOGO: Space Shooter -->
+        <div class="game-card" onclick="startGame('space.html')">
+            <div class="game-icon" style="background-image: url('../images/index/Menu/SpaceIcon.png');"></div>
+            <div class="game-title">Space Shooter</div>
         </div>
     </div>
 
@@ -132,7 +138,7 @@
 
     <script>
         // substitui a função startGame anterior
-        function startGame() {
+        function startGame(targetPage = 'rawr-rawr.html') {
             const overlay = document.getElementById('loadingOverlay');
             const fill = overlay.querySelector('.loading-fill');
 
@@ -150,7 +156,7 @@
 
             // redireciona quando a animação terminar (duração CSS + buffer)
             const redirectAfter = 1800; // ms (ajuste se alterar a duração CSS)
-            setTimeout(() => window.location.href = 'rawr-rawr.html', redirectAfter);
+            setTimeout(() => window.location.href = targetPage, redirectAfter);
         }
     </script>
 

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<game title="Space Shooter">
+  <components>
+
+    <!-- Nave do jogador -->
+    <component id="player" 
+      type="rectangle" 
+      x="445" y="470"
+      width="70" height="70"
+      color="#4FC3F7" />
+
+    <!-- Texto de score -->
+    <component id="scoreText"
+      type="text"
+      x="20" y="20"
+      text="Score: 0" />
+
+  </components>
+
+  <actions>
+
+    <!-- mover esquerda -->
+    <action id="moveLeft"
+      trigger="keydown"
+      key="ArrowLeft"
+      target="player"
+      effect="translate"
+      dx="-20" dy="0" />
+
+    <!-- mover direita -->
+    <action id="moveRight"
+      trigger="keydown"
+      key="ArrowRight"
+      target="player"
+      effect="translate"
+      dx="20" dy="0" />
+
+    <!-- atirar -->
+    <action id="shoot"
+      trigger="keydown"
+      key="Space"
+      target="player"
+      effect="shoot" />
+
+  </actions>
+</game>
