@@ -1,0 +1,193 @@
+:root {
+    --bg-page-1: #121212;
+    --bg-page-2: #1a1a1a;
+    --accent: #4CAF50;
+    --muted: #1f1f1f;
+    --text: #fff;
+    --border: #444;
+    --game-width: 1000px;
+    --game-height: 300px;
+    --font-sans: Arial, Helvetica, sans-serif;
+}
+
+
+/* Base geral */
+
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans);
+    color: var(--text);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+
+/* Página do menu (index) e página do jogo (game) compartilham estilos base.
+   Se quiser diferenciar, adicione classes no <body> e sobreponha aqui. */
+
+body {
+    background: var(--bg-page-2);
+    padding: 20px;
+    box-sizing: border-box;
+}
+
+
+/* Cabeçalho simples */
+
+h1,
+h2 {
+    text-align: center;
+    font-weight: 700;
+    margin: 0 0 20px 0;
+}
+
+
+/* Game area (game.html) */
+
+#gameArea {
+    position: relative;
+    width: var(--game-width);
+    height: var(--game-height);
+    border: 3px solid #fff;
+    background: url('../images/dinosaur/spr_forest.png') repeat-x left center;
+    background-size: auto 100%;
+    overflow: hidden;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+
+/* Elementos base */
+
+.g-entity {
+    position: absolute;
+    box-sizing: border-box;
+}
+
+
+/* Texto em jogo */
+
+.g-text {
+    font-size: 18px;
+    font-weight: bold;
+    color: var(--text);
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.6);
+}
+
+
+/* Player sprite */
+
+.player-sprite {
+    width: 48px;
+    height: 35px;
+    background-image: url('../images/dinosaur/spr_dino_walk.png');
+    background-repeat: no-repeat;
+    background-size: 288px 35px;
+    animation: run-cycle 0.6s steps(6) infinite;
+    will-change: background-position;
+    display: block;
+}
+
+.dino-static {
+    width: 48px;
+    height: 35px;
+    background-image: url('../images/dinosaur/DinoSprites5.png');
+    background-repeat: no-repeat;
+    background-size: 48px 35px;
+    background-position: center;
+}
+
+
+/* Pausa a animação do player (usar quando no ar / game over) */
+
+.player-sprite.paused {
+    animation-play-state: paused;
+    background-position: 0 0;
+}
+
+
+/* Ciclo de corrida do player */
+
+@keyframes run-cycle {
+    from {
+        background-position: 0 0;
+    }
+    to {
+        background-position: -288px 0;
+    }
+}
+
+
+/* Obstáculos (spikes) - cada frame no JS mostra background-position */
+
+.obstacle-sprite {
+    width: 66px;
+    height: 51px;
+    /* tamanho máximo do spritesheet */
+    background-image: url('../images/dinosaur/spr_spikes_moving.png');
+    background-repeat: no-repeat;
+    background-size: 462px 51px;
+    /* largura total 7*66 = 462, altura 51 */
+    background-position: 0 center;
+    display: block;
+    pointer-events: none;
+}
+
+
+/* Index (menu) estilos */
+
+.container-menu {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    padding: 20px 0;
+}
+
+.game-card {
+    width: 200px;
+    height: 200px;
+    background: var(--muted);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    transition: transform .25s ease, border-color .25s ease, background .25s ease;
+}
+
+.game-card:hover {
+    transform: scale(1.07);
+    border-color: #fff;
+    background: #292929;
+}
+
+.game-icon {
+    width: 90px;
+    height: 90px;
+    margin-bottom: 10px;
+    background-image: url('../images/dinosaur/DinoSprites5.png');
+    background-size: cover;
+    background-position: center;
+    filter: brightness(1.2);
+}
+
+.game-title {
+    font-size: 18px;
+    font-weight: 700;
+    text-align: center;
+}
+
+
+/* Responsividade mínima */
+
+@media (max-width: 1100px) {
+    #gameArea {
+        transform: scale(.9);
+        transform-origin: top center;
+    }
+}
