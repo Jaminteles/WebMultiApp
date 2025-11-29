@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<game title="Rawr Rawr">
+  <components>
+    <!-- player agora 48x35 e posicionado no groundLevel (y=240) -->
+    <component id="player" type="rectangle" x="200" y="240" width="48" height="35" color="#4CAF50" />
+    <component id="scoreText" type="text" x="20" y="20" text="Score: 0" />
+  </components>
+
+  <actions>
+    <action id="jump" trigger="keydown" key="ArrowUp" target="player" effect="jump" dx="0" />
+  </actions>
+</game>
