@@ -43,6 +43,102 @@ $(document).ready(() => {
         loaded: false
     };
 
+    // ===== SISTEMA DE DIFICULDADE =====
+    let difficulty = "normal"; // easy / normal / hard / insane
+
+    const difficultyConfig = {
+        easy: {
+            enemySpawnRateMin: 1500,
+            enemySpawnRateMax: 2400,
+            gravity: 0.35,
+            terminalVy: 3,
+            cannonPickupChance: 0.45,
+        },
+
+        normal: {
+            enemySpawnRateMin: 1000,
+            enemySpawnRateMax: 1800,
+            gravity: 0.45,
+            terminalVy: 4,
+            cannonPickupChance: 0.30,
+        },
+
+        hard: {
+            enemySpawnRateMin: 800,
+            enemySpawnRateMax: 1400,
+            gravity: 0.55,
+            terminalVy: 5,
+            cannonPickupChance: 0.20,
+        },
+
+        insane: {
+            enemySpawnRateMin: 550,
+            enemySpawnRateMax: 900,
+            gravity: 0.75,
+            terminalVy: 6,
+            cannonPickupChance: 0.10,
+        }
+    };
+
+    // ---- SISTEMA DE ARMAS ----
+    let currentWeapon = "default";
+    const weaponConfig = {
+        default: {
+            cooldown: 220,
+            projectileSprite: null,
+            multiShot: false,
+            offset: [{ x: -9, y: 0 }]
+        },
+        cannon: {
+            cooldown: 140,
+            projectileSprite: "../images/space/effects/projectiles/projectile_autoCannon.png",
+            multiShot: true,
+            offset: [
+                { x: -25, y: 18 }, // cano esquerdo
+                { x: 10, y: 18 } // cano direito
+            ]
+        }
+    };
+
+    // ---- SPRITE ANIMADA DO PICKUP ----
+    const pickupCannonSprite = {
+        src: "../images/space/pickups/pickupCannon.png",
+        img: null,
+        frames: 15, // 720 / 48
+        fw: 48,
+        fh: 48,
+        loaded: true
+    };
+
+    // ---- SPRITE ANIMADA DO PROJETIL ----
+    const cannonProjectileSprite = {
+        src: "../images/space/effects/projectiles/projectile_autoCannon.png",
+        img: null,
+        frames: 4, // 72 / 18
+        fw: 18,
+        fh: 18,
+        loaded: true
+    };
+
+    function animateSprite($el, sprite, speedMs = 80, removeOnEnd = false) {
+        let frame = 0;
+        const iv = setInterval(() => {
+            const posX = -frame * sprite.fw;
+            $el.css("background-position", posX + "px 0px");
+            frame++;
+            if (frame >= sprite.frames) {
+                if (removeOnEnd) {
+                    $el.remove();
+                    clearInterval(iv);
+                    return;
+                }
+                frame = 0; // loop
+            }
+        }, speedMs);
+        return iv;
+    }
+
+
     (function preloadExplosion() {
         const img = new Image();
         img.src = explosionSprite.src;
@@ -154,6 +250,21 @@ $(document).ready(() => {
                         "background-position": "center",
                         "z-index": 50
                     });
+                    // Cria o sprite do canhão (fica separado)
+                    const cannonEl = $("<div/>").attr("id", "playerCannon").css({
+                        position: "absolute",
+                        width: "70px",
+                        height: "70px",
+                        left: el.getAttribute("x") + "px",
+                        top: el.getAttribute("y") + "px",
+                        "pointer-events": "none",
+                        "background-image": "none",
+                        "background-size": "contain",
+                        "background-repeat": "no-repeat",
+                        "z-index": 40 // fica atrás da nave
+                    });
+                    gameArea.append(cannonEl);
+                    components["playerCannon"] = cannonEl;
                 }
             }
 
@@ -168,7 +279,7 @@ $(document).ready(() => {
 
                 // se for scoreText, exibir também vidas
                 if (id === "scoreText") {
-                    $obj.text("Score: 0  |  HP: " + playerLife);
+                    $obj.text("Score: 0");
                 }
             }
 
@@ -224,34 +335,45 @@ $(document).ready(() => {
 
     // ----- TIRO -----
     function shoot() {
+        const weapon = weaponConfig[currentWeapon];
         const player = components["player"];
         if (!player) return;
 
-        const pw = parseInt(player.css("width")) || 70;
-        const ph = parseInt(player.css("height")) || 70;
+        const px = parseInt(player.css("left"));
+        const py = parseInt(player.css("top"));
+        const pw = parseInt(player.css("width"));
 
-        const px = Math.floor(parseInt(player.css("left")) + pw / 2 - 3);
-        const py = Math.floor(parseInt(player.css("top")) - 10);
+        weapon.offset.forEach(pt => {
+            const bx = px + pw / 2 + pt.x;
+            const by = py + pt.y;
 
-        const bulletEl = $("<div/>").addClass("bullet").css({
-            left: px + "px",
-            top: py + "px",
-            width: "6px",
-            height: "18px",
-            position: "absolute"
+            const bgSizeW = cannonProjectileSprite.fw * cannonProjectileSprite.frames;
+            const bgSizeH = cannonProjectileSprite.fh;
+
+            const bulletEl = $("<div/>").addClass("bullet").css({
+                left: bx + "px",
+                top: by + "px",
+                width: cannonProjectileSprite.fw + "px",
+                height: cannonProjectileSprite.fh + "px",
+                position: "absolute",
+                // usa 'background' (shorthand) para sobrescrever qualquer background definido em CSS
+                "background": `url("${cannonProjectileSprite.src}") no-repeat 0 0 / ${bgSizeW}px ${bgSizeH}px`,
+                "pointer-events": "none"
+            });
+
+            const bulletObj = {
+                el: bulletEl,
+                x: bx,
+                y: by,
+                w: cannonProjectileSprite.fw,
+                h: cannonProjectileSprite.fh,
+                vy: -BULLET_SPEED,
+                anim: animateSprite(bulletEl, cannonProjectileSprite, 55)
+            };
+
+            bullets.push(bulletObj);
+            gameArea.append(bulletEl);
         });
-
-        const bulletObj = {
-            el: bulletEl,
-            x: px,
-            y: py,
-            w: 6,
-            h: 18,
-            vy: -BULLET_SPEED
-        };
-
-        bullets.push(bulletObj);
-        gameArea.append(bulletEl);
     }
 
     // atualiza sprite do player baseado nas vidas atuais
@@ -305,9 +427,9 @@ $(document).ready(() => {
         setTimeout(() => setPlayerInvulnerable(false), PLAYER_INVUL_MS);
 
         if (components["scoreText"]) {
-            components["scoreText"].text("Score: " + score + "  |  HP: " + playerLife);
+            components["scoreText"].text("Score: " + score);
         } else {
-            updateInfo("HP: " + playerLife);
+            updateInfo();
         }
 
         if (playerLife <= 0) {
@@ -349,9 +471,86 @@ $(document).ready(() => {
         gameArea.append(enemyEl);
     }
 
+    function spawnCannonPickup() {
+        const size = 48;
+        const x = Math.random() * (GAME_W - size);
+        const y = -60;
+
+        const el = $("<div/>").addClass("pickupCannon").css({
+            width: size + "px",
+            height: size + "px",
+            left: x + "px",
+            top: y + "px",
+            position: "absolute",
+            "background-image": `url("${pickupCannonSprite.src}")`,
+            "background-size": (pickupCannonSprite.fw * pickupCannonSprite.frames) + "px " + size + "px",
+            "background-repeat": "no-repeat",
+            "background-position": "0px 0px",
+            "pointer-events": "none",
+            "z-index": 30
+        });
+
+        gameArea.append(el);
+
+        const obj = {
+            el,
+            x,
+            y,
+            w: size,
+            h: size,
+            anim: animateSprite(el, pickupCannonSprite, 70)
+        };
+
+        cannonPickups.push(obj);
+    }
+
+
+    let cannonPickups = [];
+
+    function equipCannon() {
+        currentWeapon = "cannon";
+
+        // NÃO altera a sprite principal do jogador (evita duplicar/ocultar)
+        // apenas exibe o sprite do canhão por baixo (playerCannon)
+        if (components["playerCannon"]) {
+            components["playerCannon"].css("background-image",
+                'url("../images/space/player/pickupsPlayer/spaceShip_Cannon.png")');
+        }
+
+        // temporário (30s) ou infinito — você escolhe
+        setTimeout(() => {
+            if (currentWeapon === "cannon") {
+                currentWeapon = "default";
+                // restaura apenas o canhão (esconde-o)
+                if (components["playerCannon"]) components["playerCannon"].css("background-image", "none");
+                // garante sprite principal volta a mostrar 3 vidas (se necessário)
+                if (components["player"]) components["player"].css("background-image",
+                    'url("../images/space/player/spaceShip_3Life.png")');
+            }
+        }, 30000);
+    }
+
     // ----- GAME LOOP -----
     function startGame() {
-        spawnInterval = setInterval(spawnEnemy, 1000 + Math.floor(Math.random() * 800));
+        const cfg = difficultyConfig[difficulty];
+
+        function startEnemySpawner() {
+            const delay = Math.floor(
+                cfg.enemySpawnRateMin + Math.random() * (cfg.enemySpawnRateMax - cfg.enemySpawnRateMin)
+            );
+            spawnInterval = setTimeout(() => {
+                spawnEnemy();
+                startEnemySpawner();
+            }, delay);
+        }
+
+        startEnemySpawner();
+        setInterval(() => {
+            const cfg = difficultyConfig[difficulty];
+
+            if (Math.random() < cfg.cannonPickupChance)
+                spawnCannonPickup();
+        }, 6000);
 
         gameLoop = setInterval(() => {
             // Atualizar movimento do player continuamente
@@ -360,6 +559,15 @@ $(document).ready(() => {
             }
             if (keysPressed["ArrowRight"]) {
                 movePlayer(PLAYER_SPEED);
+            }
+
+            // seguir o player
+            if (components["playerCannon"]) {
+                const p = components["player"];
+                const pc = components["playerCannon"];
+                const x = parseInt(p.css("left"));
+                const y = parseInt(p.css("top"));
+                pc.css({ left: x + "px", top: (y + 20) + "px" });
             }
 
             // Controle de tiro com cooldown:
@@ -387,8 +595,12 @@ $(document).ready(() => {
             // atualizar enemies com gravidade
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const e = enemies[i];
-                e.vy += GRAVITY;
-                if (e.vy > ENEMY_TERMINAL_VY) e.vy = ENEMY_TERMINAL_VY;
+
+                const cfg = difficultyConfig[difficulty];
+
+                e.vy += cfg.gravity;
+                if (e.vy > cfg.terminalVy) e.vy = cfg.terminalVy;
+
                 e.y += e.vy;
 
                 if (e.y > GAME_H + 50) {
@@ -429,6 +641,36 @@ $(document).ready(() => {
                 }
             }
 
+            // pickup do canhão
+            for (let i = cannonPickups.length - 1; i >= 0; i--) {
+                const p = cannonPickups[i];
+                p.y += 2;
+                p.el.css("top", p.y + "px");
+
+                // colisão player ↔ pickup
+                const player = components["player"];
+                const pp = player.position();
+                if (rectsIntersect(pp.left, pp.top, 70, 70, p.x, p.y, p.w, p.h)) {
+
+                    // 🔥 PARA A ANIMAÇÃO ANTES DE REMOVER
+                    if (p.anim) clearInterval(p.anim);
+
+                    p.el.remove();
+                    cannonPickups.splice(i, 1);
+                    equipCannon();
+                    continue;
+                }
+
+                // sai da tela
+                if (p.y > GAME_H + 40) {
+                    // PARA A ANIMAÇÃO ANTES DE REMOVER
+                    if (p.anim) clearInterval(p.anim);
+
+                    p.el.remove();
+                    cannonPickups.splice(i, 1);
+                    continue;
+                }
+            }
             checkCollisions();
 
         }, TICK_MS);
@@ -457,6 +699,7 @@ $(document).ready(() => {
 
                     // chama a explosão
                     spawnExplosion(expX, expY);
+                    if (b.anim) clearInterval(b.anim);
 
                     b.el.remove();
                     e.el.remove();
@@ -465,7 +708,9 @@ $(document).ready(() => {
                     enemies.splice(ei, 1);
 
                     score += 10;
-                    if (components["scoreText"]) components["scoreText"].text("Score: " + score + "  |  HP: " + playerLife);
+                    if (components["scoreText"]) components["scoreText"].text("Score: " + score);
+                    if (score >= 200 && difficulty === "normal") difficulty = "hard";
+                    if (score >= 500 && difficulty === "hard") difficulty = "insane";
 
                     hit = true;
                     break;

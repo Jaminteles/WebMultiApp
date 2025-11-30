@@ -35,8 +35,11 @@
         .bullet {
             width: 6px;
             height: 18px;
-            background: yellow;
+            /* remove cor sólida; projéteis agora desenham seu próprio background via JS */
+            background: transparent;
             border-radius: 3px;
+            position: absolute;
+            pointer-events: none;
         }
         
         .enemy {

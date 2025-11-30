@@ -26,7 +26,7 @@ $(document).ready(function() {
             .then(r => r.text())
             .then(str => (new window.DOMParser()).parseFromString(str, "text/xml"))
             .then(xml => {
-                updateInfo('Jogo carregado. Use SETA PARA CIMA para pular!');
+                updateInfo('Use SETA PARA CIMA para pular!');
                 parseComponents(xml);
                 parseActions(xml);
                 startGame();
