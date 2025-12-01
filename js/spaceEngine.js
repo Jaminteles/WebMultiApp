@@ -658,6 +658,7 @@ $(document).ready(() => {
                     p.el.remove();
                     cannonPickups.splice(i, 1);
                     equipCannon();
+                    updatePlayerSprite();
                     continue;
                 }
 
@@ -672,6 +673,7 @@ $(document).ready(() => {
                 }
             }
             checkCollisions();
+            updatePlayerSprite();
 
         }, TICK_MS);
     }
