@@ -8,7 +8,7 @@
 
     <!-- Bootstrap -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="../css/styles.css">
+    <link rel="stylesheet" href="css/styles.css">
 
     <style>
         body {
@@ -114,14 +114,14 @@
 
     <div class="container-menu">
         <!-- QUADRADO DO JOGO: Rawr Rawr -->
-        <div class="game-card" onclick="startGame('rawr-rawr.html')">
-            <div class="game-icon" style="background-image: url('../images/index/Menu/DinoIcon.png');"></div>
+        <div class="game-card" onclick="startGame('./pages/rawr-rawr.html')">
+            <div class="game-icon" style="background-image: url('images/index/Menu/DinoIcon.png');"></div>
             <div class="game-title">Rawr Rawr</div>
         </div>
 
         <!-- QUADRADO DO JOGO: Space Shooter -->
-        <div class="game-card" onclick="startGame('space.html')">
-            <div class="game-icon" style="background-image: url('../images/index/Menu/SpaceIcon.png');"></div>
+        <div class="game-card" onclick="startGame('./pages/space.html')">
+            <div class="game-icon" style="background-image: url('images/index/Menu/SpaceIcon.png');"></div>
             <div class="game-title">Space Shooter</div>
         </div>
     </div>
@@ -137,7 +137,7 @@
     </div>
 
     <script>
-        function startGame(targetPage = 'rawr-rawr.html') {
+        function startGame(targetPage = './pages/rawr-rawr.html') {
             const overlay = document.getElementById('loadingOverlay');
             const fill = overlay.querySelector('.loading-fill');
             const title = overlay.querySelector('.loading-title');
