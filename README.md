@@ -164,19 +164,7 @@ O engine interpreta:
 
 ---
 
-## 📷 Screenshots (adicione depois)
-
-> Coloque suas imagens aqui quando quiser.
-
-```
-/images/readme/rawr1.png
-/images/readme/space1.png
-```
-
-Exemplo:
-
-![Rawr Rawr](images/readme/rawr1.png)
-![Space Shooter](images/readme/space1.png)
+## 📷 Screenshots 
 
 ---
 
