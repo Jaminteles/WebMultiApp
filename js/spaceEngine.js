@@ -1,43 +1,67 @@
+/**
+ * spaceEngine.js
+ * Motor do jogo "Space Shooter" — carregamento do XML, parse dos componentes,
+ * sistema de entrada, spawn de inimigos/pickups, armas, projéteis, colisões e UI.
+ *
+ * Mantive toda a lógica original, reorganizei, padronizei nomes e incluí JSDoc.
+ *
+ * Referência original: spaceEngine.js fornecido pelo usuário. :contentReference[oaicite:3]{index=3}
+ */
+
 $(document).ready(() => {
+    // ---------- Constantes de UI e loop ----------
     const gameArea = $("#gameArea");
     const info = $("#info");
 
     const GAME_W = gameArea.width();
     const GAME_H = gameArea.height();
 
+    // ---------- Estado global ----------
+    /** @type {Object.<string, JQuery>} Componentes carregados do XML */
     let components = {};
+
+    /** @type {number} Pontuação atual */
     let score = 0;
 
+    /** @type {Array<Object>} Projetéis ativos */
     let bullets = [];
+
+    /** @type {Array<Object>} Inimigos ativos */
     let enemies = [];
 
+    /** @type {number|null} Timeout/Interval responsável por spawn de inimigos */
     let spawnInterval;
+
+    /** @type {number|null} Interval do loop principal */
     let gameLoop;
 
-    const BULLET_SPEED = 15; // px per tick (sobe)
-    const ENEMY_INITIAL_VY = 0; // inicial
-    const GRAVITY = 0.45; // aceleração por tick (gravidade)
-    const ENEMY_TERMINAL_VY = 4; // velocidade máxima de queda
+    const BULLET_SPEED = 15;
+    const ENEMY_INITIAL_VY = 0;
     const TICK_MS = 30;
-    let PLAYER_SPEED = 8; // velocidade contínua do player
 
-    // Offsets para sprites que seguem a nave (ajuste aqui)
+    // velocidade do player (ajustada por engine boost)
+    let PLAYER_SPEED = 8;
+
+    // offsets para posicionamento de sprites que acompanham a nave
     const PLAYER_CANNON_OFFSET = { x: 0, y: 20 };
-    const PLAYER_ENGINE_OFFSET = { x: 0, y: 5 }; // <--- mudar estes valores para reposicionar o motor
+    const PLAYER_ENGINE_OFFSET = { x: 0, y: 5 };
 
-    const SHOOT_COOLDOWN_MS = 220; // intervalo entre tiros quando segurando SPACE
+    // cooldown de tiro (ms)
+    const SHOOT_COOLDOWN_MS = 220;
     let lastShotAt = 0;
 
     // vida do player
     const PLAYER_MAX_LIFE = 3;
     let playerLife = PLAYER_MAX_LIFE;
-    let playerInvulnerable = false;
-    const PLAYER_INVUL_MS = 1200; // invulnerabilidade após hit (ms)
 
-    // Sistema de teclas pressionadas
+    // invulnerabilidade após hit
+    let playerInvulnerable = false;
+    const PLAYER_INVUL_MS = 1200;
+
+    // registra teclas pressionadas
     const keysPressed = {};
 
-    // --- PRELOAD EXPLOSION SPRITE ---
+    // ---------- Sprites / Assets (pré-configuração) ----------
     const explosionSprite = {
         src: "../images/space/effects/sprExplosion_enemy1.png",
         img: null,
@@ -47,9 +71,8 @@ $(document).ready(() => {
         loaded: false
     };
 
-    // ===== SISTEMA DE DIFICULDADE =====
-    let difficulty = "normal"; // easy / normal / hard / insane
-
+    // configuração de dificuldade (parâmetros por nível)
+    let difficulty = "normal";
     const difficultyConfig = {
         easy: {
             enemySpawnRateMin: 1500,
@@ -58,7 +81,6 @@ $(document).ready(() => {
             terminalVy: 3,
             cannonPickupChance: 0.45,
         },
-
         normal: {
             enemySpawnRateMin: 1000,
             enemySpawnRateMax: 1800,
@@ -66,7 +88,6 @@ $(document).ready(() => {
             terminalVy: 4,
             cannonPickupChance: 0.30,
         },
-
         hard: {
             enemySpawnRateMin: 800,
             enemySpawnRateMax: 1400,
@@ -74,7 +95,6 @@ $(document).ready(() => {
             terminalVy: 5,
             cannonPickupChance: 0.20,
         },
-
         insane: {
             enemySpawnRateMin: 550,
             enemySpawnRateMax: 900,
@@ -84,7 +104,7 @@ $(document).ready(() => {
         }
     };
 
-    // ---- SISTEMA DE ARMAS ----
+    // ---- Sistema de armas ----
     let currentWeapon = "default";
     const weaponConfig = {
         default: {
@@ -98,27 +118,26 @@ $(document).ready(() => {
             projectileSprite: "../images/space/effects/projectiles/projectile_autoCannon.png",
             multiShot: true,
             offset: [
-                { x: -25, y: 18 }, // cano esquerdo
-                { x: 10, y: 18 } // cano direito
+                { x: -25, y: 18 },
+                { x: 10, y: 18 }
             ]
         }
     };
 
-    // ---- SPRITE ANIMADA DO PICKUP DE VELOCIDADE ----
+    // ---- Sprites animados de pickups / projetéis ----
     const pickupEngineSprite = {
         src: "../images/space/pickups/pickpup_engineLaser.png",
         img: null,
-        frames: 15, // ajuste caso o sprite sheet tenha outro número
+        frames: 15,
         fw: 48,
         fh: 48,
         loaded: true
     };
 
-    // ---- SPRITE ANIMADA DO PICKUP ----
     const pickupCannonSprite = {
         src: "../images/space/pickups/pickupCannon.png",
         img: null,
-        frames: 15, // 720 / 48
+        frames: 15,
         fw: 48,
         fh: 48,
         loaded: true
@@ -127,27 +146,37 @@ $(document).ready(() => {
     let engineBoost = false;
     let engineBoostEndAt = 0;
 
+    const cannonProjectileSprite = {
+        src: "../images/space/effects/projectiles/projectile_autoCannon.png",
+        img: null,
+        frames: 4,
+        fw: 18,
+        fh: 18,
+        loaded: true
+    };
+
+    /**
+     * Equip a engine boost: aumenta a velocidade do jogador por um período e aplica sprite do motor.
+     * Duração: 25s
+     */
     function equipEngineBoost() {
         engineBoost = true;
-        engineBoostEndAt = Date.now() + 25000; // dura 25s
+        engineBoostEndAt = Date.now() + 25000;
 
-        // aplica sprite do motor por baixo da nave
         if (components["playerEngine"]) {
             components["playerEngine"].css("background-image",
                 'url("../images/space/player/pickupsPlayer/spaceShip_engineLaser.png")');
         }
     }
 
-    // ---- SPRITE ANIMADA DO PROJETIL ----
-    const cannonProjectileSprite = {
-        src: "../images/space/effects/projectiles/projectile_autoCannon.png",
-        img: null,
-        frames: 4, // 72 / 18
-        fw: 18,
-        fh: 18,
-        loaded: true
-    };
-
+    /**
+     * Anima um elemento usando spritesheet.
+     * @param {JQuery} $el Elemento jQuery a animar.
+     * @param {Object} sprite Config do sprite: {frames, fw, fh, src}
+     * @param {number} [speedMs=80] Intervalo entre frames (ms)
+     * @param {boolean} [removeOnEnd=false] Se verdadeiro remove elemento ao terminar (quando não looping).
+     * @returns {number} ID do interval criado, para poder limpar.
+     */
     function animateSprite($el, sprite, speedMs = 80, removeOnEnd = false) {
         let frame = 0;
         const iv = setInterval(() => {
@@ -160,20 +189,19 @@ $(document).ready(() => {
                     clearInterval(iv);
                     return;
                 }
-                frame = 0; // loop
+                frame = 0;
             }
         }, speedMs);
         return iv;
     }
 
-
+    // ---------- Preload sprites (explosão) ----------
     (function preloadExplosion() {
         const img = new Image();
         img.src = explosionSprite.src;
         img.onload = () => {
             explosionSprite.img = img;
             explosionSprite.fh = img.height;
-            // assume sprite strip with square frames: frames = width / height
             explosionSprite.frames = Math.max(1, Math.round(img.width / img.height));
             explosionSprite.fw = Math.round(img.width / explosionSprite.frames);
             explosionSprite.loaded = true;
@@ -181,7 +209,11 @@ $(document).ready(() => {
         img.onerror = () => { explosionSprite.loaded = false; };
     })();
 
-    // cria explosão animada na posição (px, py) - px,py em coordenadas do gameArea
+    /**
+     * Cria uma explosão animada em px,py relativos ao gameArea.
+     * @param {number} px Coordenada X (px)
+     * @param {number} py Coordenada Y (px)
+     */
     function spawnExplosion(px, py) {
         const el = $("<div/>").addClass("explosion").css({
             left: (px) + "px",
@@ -194,7 +226,6 @@ $(document).ready(() => {
         gameArea.append(el);
 
         if (!explosionSprite.loaded) {
-            // fallback: mostrar imagem inteira e remover rápido
             el.css({
                 width: 64 + "px",
                 height: 64 + "px",
@@ -220,7 +251,7 @@ $(document).ready(() => {
         });
 
         let fi = 0;
-        const stepMs = 60; // velocidade do frame (ajuste conforme necessário)
+        const stepMs = 60;
         const iv = setInterval(() => {
             if (fi >= frames) {
                 clearInterval(iv);
@@ -233,8 +264,19 @@ $(document).ready(() => {
         }, stepMs);
     }
 
-    function updateInfo(t) { info.text(t); }
+    /**
+     * Atualiza texto informativo.
+     * @param {string} t Texto para exibir.
+     */
+    function updateInfo(t) {
+        info.text(t);
+    }
 
+    // ---------- Carregamento do XML ----------
+
+    /**
+     * Carrega space.xml, parseia componentes e inicia o jogo.
+     */
     function loadXML() {
         fetch("../space.xml")
             .then(r => r.text())
@@ -249,6 +291,11 @@ $(document).ready(() => {
             .catch(err => updateInfo("Erro ao carregar XML: " + err));
     }
 
+    /**
+     * Cria elementos DOM para cada <component> do XML.
+     * Cria também playerCannon e playerEngine para exibir pickups por baixo/atrás.
+     * @param {Document} xml Document XML parseado.
+     */
     function parseComponents(xml) {
         const list = xml.getElementsByTagName("component");
         for (let el of list) {
@@ -266,10 +313,8 @@ $(document).ready(() => {
                     background: el.getAttribute("color")
                 });
 
-                // Se for o player, adiciona classe de imagem e aplica sprite inicial
                 if (id === "player") {
                     $obj.addClass("player-ship");
-                    // remove o fundo colorido e força sprite inicial para 3 vidas
                     $obj.css({
                         "background": "none",
                         "background-image": 'url("../images/space/player/spaceShip_3Life.png")',
@@ -279,7 +324,7 @@ $(document).ready(() => {
                         "z-index": 50
                     });
 
-                    // Cria o sprite do canhão (fica separado)
+                    // canhão (fica por baixo da nave)
                     const cannonEl = $("<div/>").attr("id", "playerCannon").css({
                         position: "absolute",
                         width: "70px",
@@ -290,12 +335,12 @@ $(document).ready(() => {
                         "background-image": "none",
                         "background-size": "contain",
                         "background-repeat": "no-repeat",
-                        "z-index": 40 // fica atrás da nave
+                        "z-index": 40
                     });
                     gameArea.append(cannonEl);
                     components["playerCannon"] = cannonEl;
 
-                    // Sprite do motor (engine boost)
+                    // motor (engine boost)
                     const engineEl = $("<div/>").attr("id", "playerEngine").css({
                         position: "absolute",
                         width: "70px",
@@ -306,7 +351,7 @@ $(document).ready(() => {
                         "background-size": "contain",
                         "background-repeat": "no-repeat",
                         "background-image": "none",
-                        "z-index": 35 //baixo do player, acima do fundo
+                        "z-index": 35
                     });
                     gameArea.append(engineEl);
                     components["playerEngine"] = engineEl;
@@ -322,7 +367,6 @@ $(document).ready(() => {
                     fontWeight: "bold"
                 }).text(el.getAttribute("text"));
 
-                // se for scoreText, exibir também vidas
                 if (id === "scoreText") {
                     $obj.text("Score: 0");
                 }
@@ -334,15 +378,21 @@ $(document).ready(() => {
         }
     }
 
+    /**
+     * parseActions no XML não binda teclas (input é tratado por setupKeyListeners)
+     * Mantido para compatibilidade futura.
+     * @param {Document} xml Document XML parseado.
+     */
     function parseActions(xml) {
-        const acts = xml.getElementsByTagName("action");
-
-        for (let a of acts) {
-            // Não bind de tecla aqui — input tratado por setupKeyListeners()
-        }
+        // Intencionalmente vazio: input centralizado em setupKeyListeners()
     }
 
-    // ----- SISTEMA DE TECLAS -----
+    // ---------- Input / Teclas ----------
+
+    /**
+     * Setup listeners de keydown / keyup para controlar teclas pressionadas.
+     * Usa o mapa keysPressed para comportamento contínuo no loop.
+     */
     function setupKeyListeners() {
         $(document).on("keydown.spaceengine", ev => {
             const key = ev.code || ev.key;
@@ -355,46 +405,52 @@ $(document).ready(() => {
         });
     }
 
+    /**
+     * Retorna true se existe alguma tecla diferente de espaço ou setas pressionada.
+     * Usado para permitir atirar sem bloquear outras ações.
+     * @returns {boolean}
+     */
     function anyOtherKeyPressedBesidesSpace() {
-        // considera possíveis nomes do espaço para compatibilidade
         const spaceNames = new Set(['Space', ' ', 'Spacebar']);
         const arrowKeys = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
 
         for (let k in keysPressed) {
             if (!keysPressed[k]) continue;
-            // ignora espaço e setas - permite atirar + mover ao mesmo tempo
             if (!spaceNames.has(k) && !arrowKeys.has(k)) return true;
         }
         return false;
     }
 
+    /**
+     * Move o player em dx,dy respeitando os limites do canvas.
+     * @param {number} dx Delta X em px
+     * @param {number} dy Delta Y em px
+     */
     function movePlayer(dx, dy) {
         const player = components["player"];
         if (!player) return;
-        // posição atual
+
         let x = parseInt(player.css("left")) || 0;
         let y = parseInt(player.css("top")) || 0;
 
-        // tamanho da nave
         const pw = parseInt(player.css("width")) || 70;
         const ph = parseInt(player.css("height")) || 70;
 
-        // aplica movimento
         x += dx;
         y += dy;
 
-        // limita horizontalmente
         x = Math.max(0, Math.min(GAME_W - pw, x));
-
-        // limita verticalmente
         y = Math.max(0, Math.min(GAME_H - ph, y));
 
-        // aplica no DOM
         player.css({ left: x + "px", top: y + "px" });
     }
 
+    // ---------- Tiro / Projetéis ----------
 
-    // ----- TIRO -----
+    /**
+     * Dispara projéteis com base na arma atual (currentWeapon).
+     * Cria elementos DOM e objetos em bullets[] com animação de sprite.
+     */
     function shoot() {
         const weapon = weaponConfig[currentWeapon];
         const player = components["player"];
@@ -417,7 +473,6 @@ $(document).ready(() => {
                 width: cannonProjectileSprite.fw + "px",
                 height: cannonProjectileSprite.fh + "px",
                 position: "absolute",
-                // usa 'background' (shorthand) para sobrescrever qualquer background definido em CSS
                 "background": `url("${cannonProjectileSprite.src}") no-repeat 0 0 / ${bgSizeW}px ${bgSizeH}px`,
                 "pointer-events": "none"
             });
@@ -437,7 +492,9 @@ $(document).ready(() => {
         });
     }
 
-    // atualiza sprite do player baseado nas vidas atuais
+    /**
+     * Atualiza sprite do player de acordo com a vida restante (3/2/1).
+     */
     function updatePlayerSprite() {
         const p = components["player"];
         if (!p) return;
@@ -450,40 +507,44 @@ $(document).ready(() => {
         p.css("background-image", 'url("' + url + '")');
     }
 
+    // ---------- Invulnerabilidade / dano ----------
+
     let blinkInterval = null;
 
+    /**
+     * Ativa/desativa invulnerabilidade visual do player (piscar).
+     * @param {boolean} state true para ativar, false para desativar
+     */
     function setPlayerInvulnerable(state) {
         playerInvulnerable = !!state;
         const p = components["player"];
         if (!p) return;
 
-        // parar piscada antiga se existir
         if (blinkInterval) {
             clearInterval(blinkInterval);
             blinkInterval = null;
         }
 
         if (playerInvulnerable) {
-
-            // inicia piscamento a cada 120ms
             blinkInterval = setInterval(() => {
                 const current = p.css("opacity");
                 p.css("opacity", current === "1" ? "0.2" : "1");
             }, 120);
-
         } else {
-            // desativa piscar e restaura opacidade
             p.css("opacity", "1");
         }
     }
 
+    /**
+     * Aplica dano ao player e faz checagem de game over.
+     * @param {number} [amount=1] Quantidade de vidas a subtrair.
+     */
     function damagePlayer(amount = 1) {
         if (playerInvulnerable) return;
         playerLife -= amount;
         if (playerLife < 0) playerLife = 0;
         updatePlayerSprite();
 
-        // efeito de invulnerabilidade curto
         setPlayerInvulnerable(true);
         setTimeout(() => setPlayerInvulnerable(false), PLAYER_INVUL_MS);
 
@@ -494,7 +555,6 @@ $(document).ready(() => {
         }
 
         if (playerLife <= 0) {
-            // game over
             clearInterval(spawnInterval);
             clearInterval(gameLoop);
             updateInfo("Game Over! Score: " + score);
@@ -503,7 +563,11 @@ $(document).ready(() => {
         }
     }
 
-    // ----- INIMIGOS -----
+    // ---------- Inimigos / Pickups ----------
+
+    /**
+     * Cria um inimigo em X aleatório acima da tela.
+     */
     function spawnEnemy() {
         const ENEMY_W = 64;
         const ENEMY_H = 64;
@@ -532,6 +596,9 @@ $(document).ready(() => {
         gameArea.append(enemyEl);
     }
 
+    /**
+     * Spawn de pickup de canhão (anima e adiciona à lista).
+     */
     function spawnCannonPickup() {
         const size = 48;
         const x = Math.random() * (GAME_W - size);
@@ -565,6 +632,9 @@ $(document).ready(() => {
         cannonPickups.push(obj);
     }
 
+    /**
+     * Spawn de pickup de engine (anima e adiciona à lista).
+     */
     function spawnEnginePickup() {
         const size = 48;
         const x = Math.random() * (GAME_W - size);
@@ -601,30 +671,32 @@ $(document).ready(() => {
     let enginePickups = [];
     let cannonPickups = [];
 
+    /**
+     * Equipa arma "cannon" por 30s (aplica sprite do canhão por baixo da nave).
+     * Após expirar, reverte para arma default.
+     */
     function equipCannon() {
         currentWeapon = "cannon";
-
-        // NÃO altera a sprite principal do jogador (evita duplicar/ocultar)
-        // apenas exibe o sprite do canhão por baixo (playerCannon)
         if (components["playerCannon"]) {
             components["playerCannon"].css("background-image",
                 'url("../images/space/player/pickupsPlayer/spaceShip_Cannon.png")');
         }
 
-        // temporário (30s) ou infinito — você escolhe
         setTimeout(() => {
             if (currentWeapon === "cannon") {
                 currentWeapon = "default";
-                // restaura apenas o canhão (esconde-o)
                 if (components["playerCannon"]) components["playerCannon"].css("background-image", "none");
-                // garante sprite principal volta a mostrar 3 vidas (se necessário)
                 if (components["player"]) components["player"].css("background-image",
                     'url("../images/space/player/spaceShip_3Life.png")');
             }
         }, 30000);
     }
 
-    // ----- GAME LOOP -----
+    // ---------- Loop principal / Início de jogo ----------
+
+    /**
+     * Inicia spawn de inimigos e pickups (baseado na dificuldade) e inicia gameLoop.
+     */
     function startGame() {
         const cfg = difficultyConfig[difficulty];
 
@@ -639,6 +711,7 @@ $(document).ready(() => {
         }
 
         startEnemySpawner();
+
         setInterval(() => {
             const cfg = difficultyConfig[difficulty];
 
@@ -650,7 +723,7 @@ $(document).ready(() => {
         }, 6000);
 
         gameLoop = setInterval(() => {
-            // engine boost temporário
+            // Controla engine boost e tempo
             if (engineBoost && Date.now() > engineBoostEndAt) {
                 engineBoost = false;
                 PLAYER_SPEED = 8;
@@ -658,10 +731,10 @@ $(document).ready(() => {
             }
 
             if (engineBoost) {
-                PLAYER_SPEED = 14; // velocidade aumentada
+                PLAYER_SPEED = 14;
             }
 
-            // Atualizar movimento do player continuamente
+            // Movimento contínuo do player a partir do mapa keysPressed
             if (keysPressed["ArrowLeft"]) {
                 movePlayer(-PLAYER_SPEED, 0);
             }
@@ -675,7 +748,7 @@ $(document).ready(() => {
                 movePlayer(0, -PLAYER_SPEED);
             }
 
-            // seguir o player
+            // Sincroniza canhão e motor com a posição do player usando offsets configuráveis
             if (components["playerCannon"]) {
                 const p = components["player"];
                 const pc = components["playerCannon"];
@@ -691,10 +764,10 @@ $(document).ready(() => {
                 pe.css({
                     left: (x + PLAYER_ENGINE_OFFSET.x) + "px",
                     top: (y + PLAYER_ENGINE_OFFSET.y) + "px"
-                }); // usa offsets configuráveis
+                });
             }
 
-            // Controle de tiro com cooldown:
+            // Controle de tiro com cooldown (permite segurar space)
             const now = Date.now();
             const spacePressed = !!(keysPressed["Space"] || keysPressed[" "] || keysPressed["Spacebar"]);
             if (spacePressed && !anyOtherKeyPressedBesidesSpace()) {
@@ -704,7 +777,7 @@ $(document).ready(() => {
                 }
             }
 
-            // atualizar bullets
+            // Atualiza projéteis
             for (let i = bullets.length - 1; i >= 0; i--) {
                 const b = bullets[i];
                 b.y += b.vy;
@@ -716,7 +789,7 @@ $(document).ready(() => {
                 b.el.css({ left: b.x + "px", top: b.y + "px" });
             }
 
-            // atualizar enemies com gravidade
+            // Atualiza inimigos com gravidade conforme configuração de dificuldade
             for (let i = enemies.length - 1; i >= 0; i--) {
                 const e = enemies[i];
 
@@ -736,7 +809,7 @@ $(document).ready(() => {
                 e.el.css({ left: Math.round(e.x) + "px", top: Math.round(e.y) + "px" });
             }
 
-            // checar colisão inimigo <-> player (usa posições DOM reais)
+            // Checa colisões inimigo <-> player
             const player = components["player"];
             if (player) {
                 const pPos = player.position();
@@ -749,15 +822,11 @@ $(document).ready(() => {
                     const e = enemies[ei];
                     const ePos = e.el.position();
                     if (rectsIntersect(px, py, pw, ph, ePos.left, ePos.top, e.w, e.h)) {
-
-                        // calcula posição centralizada para a explosão (ajusta visual)
                         const expX = Math.round(ePos.left + e.w / 2 - (explosionSprite.fw || 32) / 2);
                         const expY = Math.round(ePos.top + e.h / 2 - (explosionSprite.fh || 32) / 2);
 
-                        // chama a explosão
                         spawnExplosion(expX, expY);
 
-                        // dano ao player e remove inimigo
                         damagePlayer(1);
                         e.el.remove();
                         enemies.splice(ei, 1);
@@ -765,20 +834,16 @@ $(document).ready(() => {
                 }
             }
 
-            // pickup do canhão
+            // Pickups: canhão
             for (let i = cannonPickups.length - 1; i >= 0; i--) {
                 const p = cannonPickups[i];
                 p.y += 2;
                 p.el.css("top", p.y + "px");
 
-                // colisão player ↔ pickup
                 const player = components["player"];
                 const pp = player.position();
                 if (rectsIntersect(pp.left, pp.top, 70, 70, p.x, p.y, p.w, p.h)) {
-
-                    // PARA A ANIMAÇÃO ANTES DE REMOVER
                     if (p.anim) clearInterval(p.anim);
-
                     p.el.remove();
                     cannonPickups.splice(i, 1);
                     equipCannon();
@@ -786,18 +851,15 @@ $(document).ready(() => {
                     continue;
                 }
 
-                // sai da tela
                 if (p.y > GAME_H + 40) {
-                    // PARA A ANIMAÇÃO ANTES DE REMOVER
                     if (p.anim) clearInterval(p.anim);
-
                     p.el.remove();
                     cannonPickups.splice(i, 1);
                     continue;
                 }
             }
 
-            // pickup de velocidade (engine)
+            // Pickups: engine
             for (let i = enginePickups.length - 1; i >= 0; i--) {
                 const p = enginePickups[i];
                 p.y += 2;
@@ -807,9 +869,7 @@ $(document).ready(() => {
                 const pp = player.position();
 
                 if (rectsIntersect(pp.left, pp.top, 70, 70, p.x, p.y, p.w, p.h)) {
-
                     if (p.anim) clearInterval(p.anim);
-
                     p.el.remove();
                     enginePickups.splice(i, 1);
                     equipEngineBoost();
@@ -829,11 +889,27 @@ $(document).ready(() => {
         }, TICK_MS);
     }
 
-    // ----- COLISÕES -----
+    // ---------- Colisões ----------
+
+    /**
+     * Teste AABB entre dois retângulos.
+     * @param {number} ax X do retângulo A
+     * @param {number} ay Y do retângulo A
+     * @param {number} aw Largura do retângulo A
+     * @param {number} ah Altura do retângulo A
+     * @param {number} bx X do retângulo B
+     * @param {number} by Y do retângulo B
+     * @param {number} bw Largura do retângulo B
+     * @param {number} bh Altura do retângulo B
+     * @returns {boolean} true se intersectam
+     */
     function rectsIntersect(ax, ay, aw, ah, bx, by, bw, bh) {
         return ax < bx + bw && ax + aw > bx && ay < by + bh && ay + ah > by;
     }
 
+    /**
+     * Checa colisões entre projéteis e inimigos, aplica explosões, remove elementos e atualiza score/dificuldade.
+     */
     function checkCollisions() {
         for (let bi = bullets.length - 1; bi >= 0; bi--) {
             const b = bullets[bi];
@@ -846,11 +922,9 @@ $(document).ready(() => {
                 const e = enemies[ei];
                 const ePos = e.el.position();
                 if (rectsIntersect(bx, by, b.w, b.h, ePos.left, ePos.top, e.w, e.h)) {
-                    // calcula posição centralizada para a explosão (ajusta visual)
                     const expX = Math.round(ePos.left + e.w / 2 - (explosionSprite.fw || 32) / 2);
                     const expY = Math.round(ePos.top + e.h / 2 - (explosionSprite.fh || 32) / 2);
 
-                    // chama a explosão
                     spawnExplosion(expX, expY);
                     if (b.anim) clearInterval(b.anim);
 
@@ -874,10 +948,13 @@ $(document).ready(() => {
         }
     }
 
+    // ---------- Finalização ----------
+
     $(window).on("beforeunload", () => {
         clearInterval(spawnInterval);
         clearInterval(gameLoop);
     });
 
+    // ---------- Inicialização ----------
     loadXML();
 });
