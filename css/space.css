@@ -1,0 +1,48 @@
+body {
+    background: #000;
+    color: #fff;
+    padding: 20px;
+}
+
+#gameArea {
+    position: relative;
+    width: 960px;
+    height: 540px;
+    border: 3px solid white;
+    margin: 0 auto;
+    background: url("../images/space/spaceBackground.png") repeat-y center top;
+    background-size: cover;
+    overflow: hidden;
+}
+
+.g-entity {
+    position: absolute;
+    box-sizing: border-box;
+}
+
+.bullet {
+    width: 6px;
+    height: 18px;
+    background: transparent;
+    border-radius: 3px;
+    position: absolute;
+    pointer-events: none;
+}
+
+.enemy {
+    width: 64px;
+    height: 64px;
+    background-image: url('../images/space/enemy/spaceEnemy.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.player-ship {
+    width: 70px;
+    height: 70px;
+    background-image: url('../images/space/player/spaceShip.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+}

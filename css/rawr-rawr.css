@@ -1,0 +1,72 @@
+body {
+    background: #1a1a1a;
+    padding: 20px;
+    color: #fff;
+}
+
+#gameArea {
+    position: relative;
+    width: 1000px;
+    height: 300px;
+    border: 3px solid #fff;
+    background: url('../images/dinosaur/spr_forest.png') repeat-x left center;
+    background-size: auto 100%;
+    overflow: hidden;
+    margin: 0 auto;
+}
+
+.g-entity {
+    position: absolute;
+    box-sizing: border-box;
+}
+
+.player-sprite {
+    width: 48px;
+    height: 30px;
+    background-image: url('../images/dinosaur/spr_dino_walk.png');
+    background-repeat: no-repeat;
+    background-size: 288px 35px;
+    animation: run-cycle 0.6s steps(6) infinite;
+    will-change: background-position;
+}
+
+.dino-static {
+    width: 48px;
+    height: 35px;
+    background-image: url('../images/dinosaur/DinoSprites5.png');
+    background-repeat: no-repeat;
+    background-size: 48px 35px;
+    background-position: center;
+}
+
+.player-sprite.paused {
+    animation-play-state: paused;
+    background-position: 0 0;
+}
+
+@keyframes run-cycle {
+    from { background-position: 0 0; }
+    to { background-position: -288px 0; }
+}
+
+.obstacle-sprite {
+    width: 64px;
+    height: 48px;
+    background-image: url('../images/dinosaur/spr_spikes_static.png');
+    background-repeat: no-repeat;
+    background-size: 64px 48px;
+    background-position: center;
+}
+
+.g-text {
+    font-size: 24px;
+    font-weight: bold;
+    color: #fff;
+    text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+}
+
+#info {
+    text-align: center;
+    margin-top: 20px;
+    font-size: 16px;
+}
