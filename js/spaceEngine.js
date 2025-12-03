@@ -2,10 +2,6 @@
  * spaceEngine.js
  * Motor do jogo "Space Shooter" — carregamento do XML, parse dos componentes,
  * sistema de entrada, spawn de inimigos/pickups, armas, projéteis, colisões e UI.
- *
- * Mantive toda a lógica original, reorganizei, padronizei nomes e incluí JSDoc.
- *
- * Referência original: spaceEngine.js fornecido pelo usuário. :contentReference[oaicite:3]{index=3}
  */
 
 $(document).ready(() => {
@@ -282,7 +278,7 @@ $(document).ready(() => {
             .then(r => r.text())
             .then(str => new DOMParser().parseFromString(str, "text/xml"))
             .then(xml => {
-                updateInfo("Pressione ← → para mover e ESPAÇO para atirar");
+                updateInfo("Pressione ←↑↓→ para mover e ESPAÇO para atirar");
                 parseComponents(xml);
                 parseActions(xml);
                 setupKeyListeners();
@@ -555,12 +551,32 @@ $(document).ready(() => {
         }
 
         if (playerLife <= 0) {
-            clearInterval(spawnInterval);
-            clearInterval(gameLoop);
-            updateInfo("Game Over! Score: " + score);
-            const p = components["player"];
-            if (p) p.remove();
+            handleGameOver();
         }
+    }
+
+    // finaliza o jogo e liga reload por ESPAÇO
+    function handleGameOver() {
+        clearInterval(spawnInterval);
+        clearInterval(gameLoop);
+
+        updateInfo("Game Over! Score: " + score + " — Pressione ESPAÇO para recomeçar.");
+
+        const p = components["player"];
+        if (p) p.remove();
+
+        // remove handlers anteriores e adiciona um namespaced listener só para restart
+        $(document).off('keydown.spaceRestart');
+
+        $(document).on('keydown.spaceRestart', function(ev) {
+            const key = ev.code || ev.key || ev.which || ev.keyCode;
+            const isSpace = key === 'Space' || key === ' ' || key === 'Spacebar' || key === 32 || key === '32';
+            if (isSpace) {
+                ev.preventDefault();
+                $(document).off('keydown.spaceRestart');
+                location.reload();
+            }
+        });
     }
 
     // ---------- Inimigos / Pickups ----------
