@@ -19,7 +19,11 @@ $(document).ready(() => {
     const GRAVITY = 0.45; // aceleração por tick (gravidade)
     const ENEMY_TERMINAL_VY = 4; // velocidade máxima de queda
     const TICK_MS = 30;
-    const PLAYER_SPEED = 8; // velocidade contínua do player
+    let PLAYER_SPEED = 8; // velocidade contínua do player
+
+    // Offsets para sprites que seguem a nave (ajuste aqui)
+    const PLAYER_CANNON_OFFSET = { x: 0, y: 20 };
+    const PLAYER_ENGINE_OFFSET = { x: 0, y: 5 }; // <--- mudar estes valores para reposicionar o motor
 
     const SHOOT_COOLDOWN_MS = 220; // intervalo entre tiros quando segurando SPACE
     let lastShotAt = 0;
@@ -100,6 +104,16 @@ $(document).ready(() => {
         }
     };
 
+    // ---- SPRITE ANIMADA DO PICKUP DE VELOCIDADE ----
+    const pickupEngineSprite = {
+        src: "../images/space/pickups/pickpup_engineLaser.png",
+        img: null,
+        frames: 15, // ajuste caso o sprite sheet tenha outro número
+        fw: 48,
+        fh: 48,
+        loaded: true
+    };
+
     // ---- SPRITE ANIMADA DO PICKUP ----
     const pickupCannonSprite = {
         src: "../images/space/pickups/pickupCannon.png",
@@ -109,6 +123,20 @@ $(document).ready(() => {
         fh: 48,
         loaded: true
     };
+
+    let engineBoost = false;
+    let engineBoostEndAt = 0;
+
+    function equipEngineBoost() {
+        engineBoost = true;
+        engineBoostEndAt = Date.now() + 25000; // dura 25s
+
+        // aplica sprite do motor por baixo da nave
+        if (components["playerEngine"]) {
+            components["playerEngine"].css("background-image",
+                'url("../images/space/player/pickupsPlayer/spaceShip_engineLaser.png")');
+        }
+    }
 
     // ---- SPRITE ANIMADA DO PROJETIL ----
     const cannonProjectileSprite = {
@@ -250,6 +278,7 @@ $(document).ready(() => {
                         "background-position": "center",
                         "z-index": 50
                     });
+
                     // Cria o sprite do canhão (fica separado)
                     const cannonEl = $("<div/>").attr("id", "playerCannon").css({
                         position: "absolute",
@@ -265,6 +294,22 @@ $(document).ready(() => {
                     });
                     gameArea.append(cannonEl);
                     components["playerCannon"] = cannonEl;
+
+                    // Sprite do motor (engine boost)
+                    const engineEl = $("<div/>").attr("id", "playerEngine").css({
+                        position: "absolute",
+                        width: "70px",
+                        height: "70px",
+                        left: (parseInt(el.getAttribute("x")) + PLAYER_ENGINE_OFFSET.x) + "px",
+                        top: (parseInt(el.getAttribute("y")) + PLAYER_ENGINE_OFFSET.y) + "px",
+                        "pointer-events": "none",
+                        "background-size": "contain",
+                        "background-repeat": "no-repeat",
+                        "background-image": "none",
+                        "z-index": 35 //baixo do player, acima do fundo
+                    });
+                    gameArea.append(engineEl);
+                    components["playerEngine"] = engineEl;
                 }
             }
 
@@ -323,15 +368,31 @@ $(document).ready(() => {
         return false;
     }
 
-    function movePlayer(dx) {
+    function movePlayer(dx, dy) {
         const player = components["player"];
         if (!player) return;
+        // posição atual
         let x = parseInt(player.css("left")) || 0;
-        x += dx;
+        let y = parseInt(player.css("top")) || 0;
+
+        // tamanho da nave
         const pw = parseInt(player.css("width")) || 70;
+        const ph = parseInt(player.css("height")) || 70;
+
+        // aplica movimento
+        x += dx;
+        y += dy;
+
+        // limita horizontalmente
         x = Math.max(0, Math.min(GAME_W - pw, x));
-        player.css("left", x + "px");
+
+        // limita verticalmente
+        y = Math.max(0, Math.min(GAME_H - ph, y));
+
+        // aplica no DOM
+        player.css({ left: x + "px", top: y + "px" });
     }
+
 
     // ----- TIRO -----
     function shoot() {
@@ -504,7 +565,40 @@ $(document).ready(() => {
         cannonPickups.push(obj);
     }
 
+    function spawnEnginePickup() {
+        const size = 48;
+        const x = Math.random() * (GAME_W - size);
+        const y = -60;
 
+        const el = $("<div/>").addClass("pickupEngine").css({
+            width: size + "px",
+            height: size + "px",
+            left: x + "px",
+            top: y + "px",
+            position: "absolute",
+            "background-image": `url("${pickupEngineSprite.src}")`,
+            "background-size": (pickupEngineSprite.fw * pickupEngineSprite.frames) + "px " + size + "px",
+            "background-repeat": "no-repeat",
+            "background-position": "0px 0px",
+            "pointer-events": "none",
+            "z-index": 30
+        });
+
+        gameArea.append(el);
+
+        const obj = {
+            el,
+            x,
+            y,
+            w: size,
+            h: size,
+            anim: animateSprite(el, pickupEngineSprite, 70)
+        };
+
+        enginePickups.push(obj);
+    }
+
+    let enginePickups = [];
     let cannonPickups = [];
 
     function equipCannon() {
@@ -550,15 +644,35 @@ $(document).ready(() => {
 
             if (Math.random() < cfg.cannonPickupChance)
                 spawnCannonPickup();
+
+            if (Math.random() < 0.50)
+                spawnEnginePickup();
         }, 6000);
 
         gameLoop = setInterval(() => {
+            // engine boost temporário
+            if (engineBoost && Date.now() > engineBoostEndAt) {
+                engineBoost = false;
+                PLAYER_SPEED = 8;
+                components["playerEngine"].css("background-image", "none");
+            }
+
+            if (engineBoost) {
+                PLAYER_SPEED = 14; // velocidade aumentada
+            }
+
             // Atualizar movimento do player continuamente
             if (keysPressed["ArrowLeft"]) {
-                movePlayer(-PLAYER_SPEED);
+                movePlayer(-PLAYER_SPEED, 0);
             }
             if (keysPressed["ArrowRight"]) {
-                movePlayer(PLAYER_SPEED);
+                movePlayer(PLAYER_SPEED, 0);
+            }
+            if (keysPressed["ArrowDown"]) {
+                movePlayer(0, PLAYER_SPEED);
+            }
+            if (keysPressed["ArrowUp"]) {
+                movePlayer(0, -PLAYER_SPEED);
             }
 
             // seguir o player
@@ -568,6 +682,16 @@ $(document).ready(() => {
                 const x = parseInt(p.css("left"));
                 const y = parseInt(p.css("top"));
                 pc.css({ left: x + "px", top: (y + 20) + "px" });
+            }
+            if (components["playerEngine"]) {
+                const p = components["player"];
+                const pe = components["playerEngine"];
+                const x = parseInt(p.css("left"));
+                const y = parseInt(p.css("top"));
+                pe.css({
+                    left: (x + PLAYER_ENGINE_OFFSET.x) + "px",
+                    top: (y + PLAYER_ENGINE_OFFSET.y) + "px"
+                }); // usa offsets configuráveis
             }
 
             // Controle de tiro com cooldown:
@@ -652,7 +776,7 @@ $(document).ready(() => {
                 const pp = player.position();
                 if (rectsIntersect(pp.left, pp.top, 70, 70, p.x, p.y, p.w, p.h)) {
 
-                    // 🔥 PARA A ANIMAÇÃO ANTES DE REMOVER
+                    // PARA A ANIMAÇÃO ANTES DE REMOVER
                     if (p.anim) clearInterval(p.anim);
 
                     p.el.remove();
@@ -672,6 +796,33 @@ $(document).ready(() => {
                     continue;
                 }
             }
+
+            // pickup de velocidade (engine)
+            for (let i = enginePickups.length - 1; i >= 0; i--) {
+                const p = enginePickups[i];
+                p.y += 2;
+                p.el.css("top", p.y + "px");
+
+                const player = components["player"];
+                const pp = player.position();
+
+                if (rectsIntersect(pp.left, pp.top, 70, 70, p.x, p.y, p.w, p.h)) {
+
+                    if (p.anim) clearInterval(p.anim);
+
+                    p.el.remove();
+                    enginePickups.splice(i, 1);
+                    equipEngineBoost();
+                    continue;
+                }
+
+                if (p.y > GAME_H + 40) {
+                    if (p.anim) clearInterval(p.anim);
+                    p.el.remove();
+                    enginePickups.splice(i, 1);
+                }
+            }
+
             checkCollisions();
             updatePlayerSprite();
 

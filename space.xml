@@ -5,7 +5,7 @@
     <!-- Nave do jogador -->
     <component id="player" 
       type="rectangle" 
-      x="445" y="470"
+      x="445" y="460"
       width="70" height="70"
       color="#4FC3F7" />
 
@@ -34,6 +34,22 @@
       target="player"
       effect="translate"
       dx="20" dy="0" />
+
+      <!-- mover pra baixo -->
+    <action id="moveDown"
+      trigger="keydown"
+      key="ArrowDown"
+      target="player"
+      effect="translate"
+      dx="0" dy="20" />
+
+    <!-- mover pra cima -->
+    <action id="moveUp"
+      trigger="keydown"
+      key="ArrowUp"
+      target="player"
+      effect="translate"
+      dx="0" dy="-20" />
 
     <!-- atirar -->
     <action id="shoot"
