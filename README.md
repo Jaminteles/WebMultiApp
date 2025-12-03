@@ -1,8 +1,3 @@
-Perfeito, Desus! Aqui está um **README.md profissional**, completo, bonito e padronizado para o seu projeto **WebMultiApp – Coleção de Mini Games (Rawr Rawr + Space Shooter)**.
-
-Ele está formatado exatamente no padrão do GitHub, com descrição dos jogos, estrutura do projeto, como rodar, screenshots (com placeholders), tecnologias, créditos e documentação técnica.
-
-Você pode copiar e colar direto no repositório.
 
 ---
 
