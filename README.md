@@ -203,15 +203,10 @@ Exemplo:
 
 ## 👤 Autor
 
-Desus
+Jamínteles Desus Ribeiro Moura
 
 ---
 
 ## 📄 Licença
 
 Este projeto pode ser usado livremente para estudo, modificação e expansão.
-
-```
----
-
-```
